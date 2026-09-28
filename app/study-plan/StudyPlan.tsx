@@ -74,7 +74,7 @@ export default function StudyPlan({ domains, plan, pool }: { domains: Domain[]; 
                 <b>{d.name}</b>
                 <div className="bar good" style={{ marginTop: 6, maxWidth: 360 }}><div style={{ width: `${rows.length ? (dDone / rows.length) * 100 : 0}%` }} /></div>
               </div>
-              <span className="w">{d.weight}% · {d.weight} Qs</span>
+              <span className="w">{d.weight}%</span>
             </summary>
             {shown.length === 0 && <p className="sub" style={{ marginTop: 10 }}>Nothing to show for this filter.</p>}
             {shown.map((p) => {
