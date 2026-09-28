@@ -45,10 +45,10 @@ export default function LoginPage() {
           </form>
         ) : (
           <form onSubmit={verify}>
-            <p style={{ marginTop: 0 }}>We sent a code to <b>{email}</b>. Check your inbox (and spam folder).</p>
+            <p style={{ marginTop: 0 }}>We sent an 8-digit code to <b>{email}</b>. Check your inbox (and spam folder).</p>
             <label htmlFor="code">Code</label>
-            <input id="code" type="text" inputMode="numeric" autoComplete="one-time-code" required pattern="[0-9]{6,8}"
-              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="123456" />
+            <input id="code" type="text" inputMode="numeric" autoComplete="one-time-code" required pattern="[0-9]{8}" maxLength={8}
+              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="12345678" />
             <div className="row" style={{ marginTop: 16 }}>
               <button className="btn" disabled={busy}>{busy ? 'Checking…' : 'Sign in'}</button>
               <button type="button" className="btn ghost" onClick={() => { setStage('email'); setCode(''); }}>Use another email</button>

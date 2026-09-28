@@ -74,7 +74,7 @@ export default function AdminPanel({ requests, roster, allowed }: { requests: Re
               {roster.map((x) => (
                 <tr key={x.id}>
                   <td>{x.id}</td>
-                  <td>{x.full_name}{x.notes && <div className="sub" style={{ fontSize: 12 }}>{x.notes}</div>}</td>
+                  <td>{x.full_name}</td>
                   <td>{x.company}</td>
                   <td>{linked.get(x.id) ? <span className="pill ok">{linked.get(x.id)}</span> : <span className="pill">not yet</span>}</td>
                 </tr>

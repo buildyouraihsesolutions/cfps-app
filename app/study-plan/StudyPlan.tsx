@@ -9,6 +9,8 @@ type Filter = 'all' | 'high' | 'medium' | 'low' | 'todo';
 export default function StudyPlan({ domains, plan, pool }: { domains: Domain[]; plan: PlanRow[]; pool: PoolRow[] }) {
   const [done, setDone] = useState<Record<number, boolean>>({});
   const [filter, setFilter] = useState<Filter>('all');
+  const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(domains.map((d) => [d.code, true])));
+  const setAll = (v: boolean) => setOpen(Object.fromEntries(domains.map((d) => [d.code, v])));
 
   useEffect(() => {
     try { setDone(JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* ignore */ }
@@ -38,6 +40,10 @@ export default function StudyPlan({ domains, plan, pool }: { domains: Domain[]; 
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div><b>Overall progress:</b> {completed} / {total} chapters</div>
+          <div className="row">
+            <button className="btn sm ghost" onClick={() => setAll(true)}>Expand all</button>
+            <button className="btn sm ghost" onClick={() => setAll(false)}>Collapse all</button>
+          </div>
           <div className="seg">
             {(['all', 'high', 'medium', 'low', 'todo'] as Filter[]).map((f) => (
               <button key={f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
@@ -59,8 +65,10 @@ export default function StudyPlan({ domains, plan, pool }: { domains: Domain[]; 
         const shown = rows.filter((p) => filter === 'all' ? true : filter === 'todo' ? !done[p.id] : p.priority === filter);
         const dDone = rows.filter((p) => done[p.id]).length;
         return (
-          <details key={d.code} className="card domain" open>
+          <details key={d.code} className="card domain" open={!!open[d.code]}
+            onToggle={(e) => { const v = (e.currentTarget as HTMLDetailsElement).open; if (v !== !!open[d.code]) setOpen((o) => ({ ...o, [d.code]: v })); }}>
             <summary>
+              <span aria-hidden style={{ width: 14, color: 'var(--orange-600)' }}>{open[d.code] ? '▾' : '▸'}</span>
               <span className="code">{d.code}</span>
               <div style={{ flex: 1 }}>
                 <b>{d.name}</b>
