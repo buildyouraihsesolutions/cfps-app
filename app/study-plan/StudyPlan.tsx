@@ -1,24 +1,46 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { supabaseBrowser } from '@/lib/supabase/client';
 import type { Domain, PlanRow, PoolRow } from '@/lib/types';
 
-const KEY = 'cfps-plan-done-v1';
+const OLD_LOCAL_KEY = 'cfps-plan-done-v1'; // earlier version saved on the device — migrated once, then removed
 type Filter = 'all' | 'high' | 'medium' | 'low' | 'todo';
 
-export default function StudyPlan({ domains, plan, pool }: { domains: Domain[]; plan: PlanRow[]; pool: PoolRow[] }) {
-  const [done, setDone] = useState<Record<number, boolean>>({});
+export default function StudyPlan({ domains, plan, pool, initialDone }: { domains: Domain[]; plan: PlanRow[]; pool: PoolRow[]; initialDone: number[] }) {
+  const [done, setDone] = useState<Record<number, boolean>>(() => Object.fromEntries(initialDone.map((id) => [id, true])));
+  const [saveErr, setSaveErr] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<Record<string, boolean>>(() => Object.fromEntries(domains.map((d) => [d.code, true])));
   const setAll = (v: boolean) => setOpen(Object.fromEntries(domains.map((d) => [d.code, v])));
 
+  // one-time migration: move ticks from the old device-only storage into the account, then delete them locally
   useEffect(() => {
-    try { setDone(JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { /* ignore */ }
+    let old: Record<string, boolean> = {};
+    try { old = JSON.parse(window.localStorage.getItem(OLD_LOCAL_KEY) || '{}'); } catch { /* ignore */ }
+    const ids = Object.keys(old).filter((k) => old[k]).map(Number).filter((id) => plan.some((p) => p.id === id) && !initialDone.includes(id));
+    if (ids.length === 0) { try { window.localStorage.removeItem(OLD_LOCAL_KEY); } catch { /* ignore */ } return; }
+    supabaseBrowser().from('cfps_plan_progress').upsert(ids.map((plan_id) => ({ plan_id })), { onConflict: 'user_id,plan_id', ignoreDuplicates: true })
+      .then(({ error }) => {
+        if (error) return;
+        setDone((d) => ({ ...d, ...Object.fromEntries(ids.map((id) => [id, true])) }));
+        try { window.localStorage.removeItem(OLD_LOCAL_KEY); } catch { /* ignore */ }
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  function toggle(id: number) {
-    const next = { ...done, [id]: !done[id] };
-    setDone(next);
-    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* ignore */ }
+
+  async function toggle(id: number) {
+    const on = !done[id];
+    setDone((d) => ({ ...d, [id]: on }));           // optimistic
+    setSaveErr('');
+    const sb = supabaseBrowser();
+    const { error } = on
+      ? await sb.from('cfps_plan_progress').upsert({ plan_id: id }, { onConflict: 'user_id,plan_id', ignoreDuplicates: true })
+      : await sb.from('cfps_plan_progress').delete().eq('plan_id', id);
+    if (error) {
+      setDone((d) => ({ ...d, [id]: !on }));        // roll back
+      setSaveErr('Could not save — check your connection and try again.');
+    }
   }
 
   const count = useMemo(() => {
@@ -52,6 +74,7 @@ export default function StudyPlan({ domains, plan, pool }: { domains: Domain[]; 
             ))}
           </div>
         </div>
+        {saveErr && <div className="err">{saveErr}</div>}
         <div className="bar good" style={{ marginTop: 10 }}><div style={{ width: `${total ? (completed / total) * 100 : 0}%` }} /></div>
         <div className="row" style={{ marginTop: 10, fontSize: 12 }}>
           <span className="chip high">High</span> read this chapter very well

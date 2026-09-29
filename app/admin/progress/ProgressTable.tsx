@@ -10,6 +10,7 @@ export type ProgressRow = {
   domain_pct: Record<string, { pct: number; n: number }>;
   weakest_domain: string | null; weakest_pct: number | null;
   last_active: string | null; verdict: 0 | 1 | 2 | 3;
+  plan_done: number; plan_total: number;
 };
 
 const VERDICT = [
@@ -18,7 +19,7 @@ const VERDICT = [
   { label: 'Close', bg: '#fff4d6', fg: '#8a6100' },
   { label: 'Ready', bg: '#eaf6ef', fg: '#1E8E5A' },
 ];
-type SortKey = 'sn' | 'full_name' | 'company' | 'sessions' | 'full_100q' | 'questions_seen' | 'first_try_pct' | 'last_exam_pct' | 'last_active' | 'verdict';
+type SortKey = 'plan_done' | 'sn' | 'full_name' | 'company' | 'sessions' | 'full_100q' | 'questions_seen' | 'first_try_pct' | 'last_exam_pct' | 'last_active' | 'verdict';
 
 const cellColor = (p: number | undefined) =>
   p == null ? 'transparent' : p >= 75 ? '#cfeedd' : p >= 65 ? '#fff0c2' : '#fbd5d0';
@@ -51,10 +52,10 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
   );
 
   function exportCsv() {
-    const head = ['S/N', 'Name', 'Company', 'Email', 'Sessions', 'Exams', 'Full 100-Q exams', 'Questions seen', 'Bank %',
+    const head = ['S/N', 'Name', 'Company', 'Email', 'Study plan done', 'Study plan %', 'Sessions', 'Exams', 'Full 100-Q exams', 'Questions seen', 'Bank %',
       'First-try %', 'Last exam %', 'Best full exam %', ...domains.map((d) => `Domain ${d.code} %`), 'Weakest domain', 'Last active', 'Verdict'];
     const esc = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-    const lines = rows.map((r) => [r.sn, r.full_name, r.company, r.email ?? 'no account', r.sessions, r.exams, r.full_100q, r.questions_seen,
+    const lines = rows.map((r) => [r.sn, r.full_name, r.company, r.email ?? 'no account', `${r.plan_done}/${r.plan_total}`, r.plan_total ? Math.round((r.plan_done / r.plan_total) * 100) : 0, r.sessions, r.exams, r.full_100q, r.questions_seen,
       r.bank_pct, r.first_try_pct, r.last_exam_pct, r.best_full_pct, ...domains.map((d) => r.domain_pct[d.code]?.pct),
       r.weakest_domain ? `${r.weakest_domain} (${r.weakest_pct}%)` : '', r.last_active ? r.last_active.slice(0, 10) : '', VERDICT[r.verdict].label].map(esc).join(','));
     const blob = new Blob(['\uFEFF' + [head.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -94,6 +95,7 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
             <tr>
               {th('sn', '#')}
               {th('full_name', 'Student')}
+              {th('plan_done', 'Plan')}
               {th('questions_seen', 'Activity')}
               {th('first_try_pct', 'First-try')}
               {th('last_exam_pct', 'Last exam')}
@@ -110,6 +112,10 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
                   <b>{r.full_name}</b>
                   <div>{r.company}</div>
                   <div className="em">{r.email ?? 'no account yet'}</div>
+                </td>
+                <td className="act">
+                  {r.plan_total ? Math.round((r.plan_done / r.plan_total) * 100) : 0}%
+                  <div>{r.plan_done}/{r.plan_total}</div>
                 </td>
                 <td className="act">
                   {r.questions_seen} seen ({r.bank_pct}%)
