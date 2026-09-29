@@ -45,7 +45,7 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
   }, [rows, filter, sort]);
 
   const th = (k: SortKey, label: string) => (
-    <th style={{ cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => setSort((s) => ({ k, dir: s.k === k ? (-s.dir as 1 | -1) : -1 }))}>
+    <th className="nowrap" style={{ cursor: 'pointer' }} onClick={() => setSort((s) => ({ k, dir: s.k === k ? (-s.dir as 1 | -1) : -1 }))}>
       {label}{sort.k === k ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
     </th>
   );
@@ -88,45 +88,52 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
         </div>
       </div>
 
-      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-        <table className="t" style={{ minWidth: 1100 }}>
+      <div className="card" style={{ padding: 0 }}>
+        <table className="t prog">
           <thead>
             <tr>
-              {th('sn', '#')}{th('full_name', 'Name')}{th('company', 'Company')}{th('sessions', 'Sessions')}
-              {th('full_100q', 'Full exams')}{th('questions_seen', 'Seen')}{th('first_try_pct', 'First-try')}
+              {th('sn', '#')}
+              {th('full_name', 'Student')}
+              {th('questions_seen', 'Activity')}
+              {th('first_try_pct', 'First-try')}
               {th('last_exam_pct', 'Last exam')}
-              {domains.map((d) => <th key={d.code} title={d.name} style={{ textAlign: 'center' }}>{d.code}</th>)}
-              {th('last_active', 'Active')}{th('verdict', 'Verdict')}
+              {domains.map((d) => <th key={d.code} title={d.name} className="dom">{d.code}</th>)}
+              {th('last_active', 'Active')}
+              {th('verdict', 'Verdict')}
             </tr>
           </thead>
           <tbody>
             {shown.map((r) => (
               <tr key={r.sn}>
                 <td>{r.sn}</td>
-                <td><b>{r.full_name}</b><div className="sub" style={{ margin: 0, fontSize: 12 }}>{r.email ?? 'no account yet'}</div></td>
-                <td style={{ fontSize: 13 }}>{r.company}</td>
-                <td>{r.sessions}</td>
-                <td>{r.full_100q}</td>
-                <td>{r.questions_seen} <span className="sub" style={{ fontSize: 12 }}>({r.bank_pct}%)</span></td>
-                <td style={{ background: cellColor(r.first_try_pct ?? undefined), fontWeight: 'bold' }}>{r.first_try_pct != null ? `${r.first_try_pct}%` : '—'}</td>
-                <td>{r.last_exam_pct != null ? `${r.last_exam_pct}%` : '—'}</td>
+                <td className="who">
+                  <b>{r.full_name}</b>
+                  <div>{r.company}</div>
+                  <div className="em">{r.email ?? 'no account yet'}</div>
+                </td>
+                <td className="act">
+                  {r.questions_seen} seen ({r.bank_pct}%)
+                  <div>{r.full_100q} full · {r.sessions} sessions</div>
+                </td>
+                <td style={{ background: cellColor(r.first_try_pct ?? undefined), fontWeight: 'bold', textAlign: 'center' }}>{r.first_try_pct != null ? `${r.first_try_pct}%` : '—'}</td>
+                <td style={{ textAlign: 'center' }}>{r.last_exam_pct != null ? `${r.last_exam_pct}%` : '—'}</td>
                 {domains.map((d) => {
                   const c = r.domain_pct[d.code];
                   return (
-                    <td key={d.code} title={c ? `${c.n} questions answered` : 'no data'}
-                      style={{ background: c && c.n >= 5 ? cellColor(c.pct) : 'transparent', textAlign: 'center', fontSize: 12 }}>
-                      {c ? `${c.pct}%` : '—'}
+                    <td key={d.code} className="dom" title={c ? `${d.name}: ${c.n} questions answered` : 'no data'}
+                      style={{ background: c && c.n >= 5 ? cellColor(c.pct) : 'transparent' }}>
+                      {c ? c.pct : '—'}
                     </td>
                   );
                 })}
-                <td style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{daysAgo(r.last_active)}</td>
-                <td><span className="pill" style={{ background: VERDICT[r.verdict].bg, color: VERDICT[r.verdict].fg, borderColor: VERDICT[r.verdict].fg }}>{VERDICT[r.verdict].label}</span></td>
+                <td className="nowrap">{daysAgo(r.last_active)}</td>
+                <td><span className="pill nowrap" style={{ background: VERDICT[r.verdict].bg, color: VERDICT[r.verdict].fg, borderColor: VERDICT[r.verdict].fg }}>{VERDICT[r.verdict].label}</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="sub" style={{ fontSize: 12, marginTop: 10 }}>Domain cells are coloured only after 5+ first-try answers in that domain. Green ≥ 75% · Amber 65–74% · Red &lt; 65%.</p>
+      <p className="sub" style={{ fontSize: 12, marginTop: 10 }}>Domain columns show first-try % per blueprint domain (hover for the domain name). Cells are coloured after 5+ answers: green ≥ 75% · amber 65–74% · red &lt; 65%. On small screens the domain columns are hidden.</p>
     </>
   );
 }

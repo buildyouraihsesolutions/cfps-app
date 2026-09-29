@@ -104,3 +104,16 @@ table.t th { background: var(--muted); font-size: 12px; text-transform: uppercas
 .pill { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--muted); border: 1px solid var(--border); }
 .pill.ok { background: #eaf6ef; border-color: #b9e0c9; color: var(--ok); }
 .pill.bad { background: #fdecea; border-color: #f4c2bd; color: var(--bad); }
+
+/* admin progress — compact, no horizontal scroll */
+table.prog { table-layout: auto; }
+table.prog th, table.prog td { padding: 7px 6px; font-size: 13px; }
+table.prog th { font-size: 11px; }
+table.prog .who { min-width: 170px; }
+table.prog .who div { font-size: 12px; color: var(--text-muted); }
+table.prog .who .em { word-break: break-all; }
+table.prog .act { font-size: 12px; white-space: nowrap; }
+table.prog .act div { color: var(--text-muted); }
+table.prog .dom { text-align: center; width: 38px; font-size: 12px; }
+.nowrap { white-space: nowrap; }
+@media (max-width: 900px) { table.prog .dom { display: none; } }
