@@ -11,6 +11,8 @@ export type ProgressRow = {
   weakest_domain: string | null; weakest_pct: number | null;
   last_active: string | null; verdict: 0 | 1 | 2 | 3;
   plan_done: number; plan_total: number;
+  live_held: number; live_answered: number; locate_held: number; locate_answered: number; locate_pct: number | null;
+  locate_avg_sec: number | null; locate_first_sec: number | null; locate_last_sec: number | null; live_ok: boolean; live_applies: boolean;
 };
 
 const VERDICT = [
@@ -19,7 +21,7 @@ const VERDICT = [
   { label: 'Close', bg: '#fff4d6', fg: '#8a6100' },
   { label: 'Ready', bg: '#eaf6ef', fg: '#1E8E5A' },
 ];
-type SortKey = 'plan_done' | 'sn' | 'full_name' | 'company' | 'sessions' | 'full_100q' | 'questions_seen' | 'first_try_pct' | 'last_exam_pct' | 'last_active' | 'verdict';
+type SortKey = 'locate_pct' | 'plan_done' | 'sn' | 'full_name' | 'company' | 'sessions' | 'full_100q' | 'questions_seen' | 'first_try_pct' | 'last_exam_pct' | 'last_active' | 'verdict';
 
 const cellColor = (p: number | undefined) =>
   p == null ? 'transparent' : p >= 75 ? '#cfeedd' : p >= 65 ? '#fff0c2' : '#fbd5d0';
@@ -53,10 +55,10 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
 
   function exportCsv() {
     const head = ['S/N', 'Name', 'Company', 'Email', 'Study plan done', 'Study plan %', 'Sessions', 'Exams', 'Full 100-Q exams', 'Questions seen', 'Bank %',
-      'First-try %', 'Last exam %', 'Best full exam %', ...domains.map((d) => `Domain ${d.code} %`), 'Weakest domain', 'Last active', 'Verdict'];
+      'First-try %', 'Last exam %', 'Best full exam %', 'Find it accuracy %', 'Find it answered', 'Find it held', 'Find it avg sec', 'Live rounds answered', 'Live rounds held', ...domains.map((d) => `Domain ${d.code} %`), 'Weakest domain', 'Last active', 'Verdict'];
     const esc = (v: unknown) => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const lines = rows.map((r) => [r.sn, r.full_name, r.company, r.email ?? 'no account', `${r.plan_done}/${r.plan_total}`, r.plan_total ? Math.round((r.plan_done / r.plan_total) * 100) : 0, r.sessions, r.exams, r.full_100q, r.questions_seen,
-      r.bank_pct, r.first_try_pct, r.last_exam_pct, r.best_full_pct, ...domains.map((d) => r.domain_pct[d.code]?.pct),
+      r.bank_pct, r.first_try_pct, r.last_exam_pct, r.best_full_pct, r.locate_pct, r.locate_answered, r.locate_held, r.locate_avg_sec, r.live_answered, r.live_held, ...domains.map((d) => r.domain_pct[d.code]?.pct),
       r.weakest_domain ? `${r.weakest_domain} (${r.weakest_pct}%)` : '', r.last_active ? r.last_active.slice(0, 10) : '', VERDICT[r.verdict].label].map(esc).join(','));
     const blob = new Blob(['\uFEFF' + [head.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
@@ -83,6 +85,7 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
         <b>Ready</b> = 200+ different questions answered, 2+ full 100-question exams, first-try accuracy ≥ 75% and last exam ≥ 75%.
         {' '}<b>Close</b> = 100+ questions and first-try ≥ 65%.
         {' '}<b>First-try %</b> counts only the first time a student saw each question, so repeated questions do not inflate the score.
+        {' '}<b>Find it (live)</b> = accuracy on the in-class &ldquo;Find it in the FPH&rdquo; rounds (right chapter, and page within ±2 when asked), rounds answered, and average seconds to find; once 10+ such rounds have been run, <b>Ready</b> also needs ≥ 60% accuracy with at least half of the rounds answered.
         <div className="row" style={{ marginTop: 10, justifyContent: 'space-between' }}>
           <span className="sub" style={{ margin: 0 }}>{filter === 'all' ? `Showing all ${rows.length}` : `Showing ${VERDICT[filter].label} (${shown.length}) — click the card again to clear`}</span>
           <button className="btn sm navy" onClick={exportCsv}>Export CSV</button>
@@ -95,10 +98,9 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
             <tr>
               {th('sn', '#')}
               {th('full_name', 'Student')}
-              {th('plan_done', 'Plan')}
               {th('questions_seen', 'Activity')}
-              {th('first_try_pct', 'First-try')}
-              {th('last_exam_pct', 'Last exam')}
+              {th('first_try_pct', 'First-try / last exam')}
+              {th('locate_pct', 'Find it (live)')}
               {domains.map((d) => <th key={d.code} title={d.name} className="dom">{d.code}</th>)}
               {th('last_active', 'Active')}
               {th('verdict', 'Verdict')}
@@ -114,15 +116,22 @@ export default function ProgressTable({ rows, domains }: { rows: ProgressRow[]; 
                   <div className="em">{r.email ?? 'no account yet'}</div>
                 </td>
                 <td className="act">
-                  {r.plan_total ? Math.round((r.plan_done / r.plan_total) * 100) : 0}%
-                  <div>{r.plan_done}/{r.plan_total}</div>
-                </td>
-                <td className="act">
                   {r.questions_seen} seen ({r.bank_pct}%)
                   <div>{r.full_100q} full · {r.sessions} sessions</div>
+                  <div>Plan {r.plan_total ? Math.round((r.plan_done / r.plan_total) * 100) : 0}% ({r.plan_done}/{r.plan_total})</div>
                 </td>
-                <td style={{ background: cellColor(r.first_try_pct ?? undefined), fontWeight: 'bold', textAlign: 'center' }}>{r.first_try_pct != null ? `${r.first_try_pct}%` : '—'}</td>
-                <td style={{ textAlign: 'center' }}>{r.last_exam_pct != null ? `${r.last_exam_pct}%` : '—'}</td>
+                <td className="act" style={{ background: cellColor(r.first_try_pct ?? undefined), textAlign: 'center' }}>
+                  <b style={{ fontSize: 14 }}>{r.first_try_pct != null ? `${r.first_try_pct}%` : '—'}</b>
+                  <div>last exam {r.last_exam_pct != null ? `${r.last_exam_pct}%` : '—'}</div>
+                </td>
+                <td className="act" title={`Live class: answered ${r.live_answered} of ${r.live_held} rounds`}
+                  style={{ background: r.locate_answered ? cellColor(r.locate_pct ?? undefined) : 'transparent' }}>
+                  {r.locate_answered ? <b>{r.locate_pct}%</b> : '—'} {r.live_applies && (r.live_ok ? '✓' : '✗')}
+                  <div>{r.locate_answered}/{r.locate_held} found{r.locate_avg_sec != null ? ` · ${r.locate_avg_sec}s` : ''}</div>
+                  {r.locate_first_sec != null && r.locate_last_sec != null && r.locate_first_sec !== r.locate_last_sec && (
+                    <div>{r.locate_first_sec}s → {r.locate_last_sec}s {r.locate_last_sec < r.locate_first_sec ? '▼ faster' : '▲ slower'}</div>
+                  )}
+                </td>
                 {domains.map((d) => {
                   const c = r.domain_pct[d.code];
                   return (
