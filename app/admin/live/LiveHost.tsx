@@ -111,6 +111,11 @@ export default function LiveHost() {
           {r.kind === 'locate' && <p className="sub" style={{ marginBottom: 4 }}>{r.source === 'toc' ? 'Where is this chapter?' : 'Find the section, chapter and page that answer:'}</p>}
           {r.kind === 'index' && <p className="sub" style={{ marginBottom: 4 }}>Which index keyword would lead you to the answer?</p>}
           <div className="proj-prompt">{r.prompt}</div>
+          {r.kind === 'locate' && r.status === 'open' && (
+            <div className="sub" style={{ marginTop: 10, fontSize: 18 }}>
+              📱 Answer on your phone: <b>Section</b> · <b>Chapter</b>{r.answer.page != null ? <> · <b>Page</b></> : null}
+            </div>
+          )}
 
           {r.kind === 'index' && IDX.map((L) => {
             const n = r.distribution?.[L] ?? 0;
