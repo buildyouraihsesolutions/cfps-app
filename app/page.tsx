@@ -39,6 +39,7 @@ export default async function Home() {
         <Link className="card tile" href="/study-plan"><div className="ico">🗺️</div><h3>Study plan</h3><p className="sub">Blueprint domains, chapters and priorities. Tick off chapters as you finish them.</p></Link>
         <Link className="card tile" href="/handout"><div className="ico">📘</div><h3>Course handout</h3><p className="sub">Download your personal copy of the handout.</p></Link>
         <Link className="card tile" href="/practice"><div className="ico">📝</div><h3>Practice</h3><p className="sub">Exam simulation (30–100 Qs), by domain, or by chapter.</p></Link>
+        <Link className="card tile" href="/study"><div className="ico">📖</div><h3>Study questions</h3><p className="sub">Browse questions with model answers and explanations.</p></Link>
         <Link className="card tile" href="/live"><div className="ico">🎯</div><h3>Live class</h3><p className="sub">Join the in-class challenge: find it in the FPH and quick quizzes.</p></Link>
         <Link className="card tile" href="/history"><div className="ico">📊</div><h3>My results</h3>
           <p className="sub">{last ? `Last exam: ${Math.round(((last.score ?? 0) / last.question_count) * 100)}% on ${last.question_count} questions` : 'No exams yet — start with 30 questions.'}</p></Link>
