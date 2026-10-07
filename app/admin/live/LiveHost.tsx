@@ -3,10 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import { LETTERS, type Options } from '@/lib/types';
 
-type RoundRow = { id: number; seq: number; kind: 'mcq' | 'locate'; source: 'bank' | 'toc'; status: string; prompt: string; time_limit: number };
+type Kind = 'mcq' | 'locate' | 'index';
+type RoundRow = { id: number; seq: number; kind: Kind; source: 'bank' | 'toc'; status: string; prompt: string; time_limit: number };
 type Cur = {
-  id: number; seq: number; kind: 'mcq' | 'locate'; source: 'bank' | 'toc'; prompt: string; options: Options | null;
-  answer: { letter?: string; section?: number; chapter?: number; page?: number | null }; status: string; time_limit: number; time_left: number | null;
+  id: number; seq: number; kind: Kind; source: 'bank' | 'toc'; prompt: string; options: Options | null;
+  answer: { letter?: string; section?: number; chapter?: number; page?: number | null; term?: string; pages?: string | null }; status: string; time_limit: number; time_left: number | null;
   answers: number; distribution: Record<string, number> | null; fastest: { name: string; company: string; ms: number; points: number }[];
   explanation: string | null; fph_page: string | null; chapter_title: string | null;
 };
@@ -21,8 +22,11 @@ const TYPES = [
   { v: 'toc', label: 'Find the chapter (table of contents)', kind: 'locate', source: 'toc', time: 45 },
   { v: 'locate', label: 'Find it in the FPH (section, chapter, page)', kind: 'locate', source: 'bank', time: 90 },
   { v: 'mcq', label: 'Quick quiz (multiple choice)', kind: 'mcq', source: 'bank', time: 45 },
+  { v: 'index', label: 'Index hunt (pick the keyword, then solve)', kind: 'index', source: 'bank', time: 30 },
 ];
-const kindLabel = (k: string, s: string) => (k === 'mcq' ? 'Quick quiz' : s === 'toc' ? 'Find the chapter' : 'Find it in the FPH');
+const IDX = ['A', 'B', 'C'] as const;
+const kindLabel = (k: string, s: string) =>
+  k === 'index' ? 'Index hunt' : k === 'mcq' ? 'Quick quiz' : s === 'toc' ? 'Find the chapter' : 'Find it in the FPH';
 
 export default function LiveHost() {
   const sb = useRef(supabaseBrowser()).current;
@@ -105,7 +109,20 @@ export default function LiveHost() {
             {r.status === 'open' && left != null && <span className={`timer ${left <= 10 ? 'low' : ''}`}>{left}s</span>}
           </div>
           {r.kind === 'locate' && <p className="sub" style={{ marginBottom: 4 }}>{r.source === 'toc' ? 'Where is this chapter?' : 'Find the section, chapter and page that answer:'}</p>}
+          {r.kind === 'index' && <p className="sub" style={{ marginBottom: 4 }}>Which index keyword would lead you to the answer?</p>}
           <div className="proj-prompt">{r.prompt}</div>
+
+          {r.kind === 'index' && IDX.map((L) => {
+            const n = r.distribution?.[L] ?? 0;
+            const ok = revealed && r.answer.letter === L;
+            return (
+              <div key={L} className={`opt ${ok ? 'correct' : ''}`} style={{ cursor: 'default', position: 'relative', overflow: 'hidden' }}>
+                {r.status !== 'open' && <div className="distbar" style={{ width: `${(100 * n) / maxDist}%` }} />}
+                <span className="L">{L}.</span><span style={{ flex: 1 }}>{r.options?.[L as keyof Options]}</span>
+                {r.status !== 'open' && <b>{n}</b>}
+              </div>
+            );
+          })}
 
           {r.kind === 'mcq' && LETTERS.map((L) => {
             const n = r.distribution?.[L] ?? 0;
@@ -129,7 +146,12 @@ export default function LiveHost() {
 
           {revealed && (
             <div className="live-result good" style={{ marginTop: 12 }}>
-              {r.kind === 'locate'
+              {r.kind === 'index' ? (
+                <>
+                  <div className="big-line">Keyword: {r.answer.term}</div>
+                  {r.answer.pages && <div style={{ marginTop: 4 }}>📖 Index → page <b>{r.answer.pages}</b>. Open the book there — next we solve it together.</div>}
+                </>
+              ) : r.kind === 'locate'
                 ? <div className="big-line">Section {r.answer.section} · Chapter {r.answer.section}.{r.answer.chapter}{r.answer.page ? ` · page ${r.answer.section}-${r.answer.page}` : ''}{r.chapter_title && r.source !== 'toc' ? ` — ${r.chapter_title}` : ''}</div>
                 : <div className="big-line">Answer: {r.answer.letter}</div>}
               {r.explanation && <div className="expl">{r.explanation}{r.fph_page && <div style={{ marginTop: 6 }}><b>FPH:</b> page {r.fph_page}</div>}</div>}
@@ -203,9 +225,22 @@ export default function LiveHost() {
         </div>
         <button className="btn" style={{ marginTop: 12 }} onClick={() => {
           const t = TYPES.find((x) => x.v === type)!;
-          call('cfps_live_add_rounds', { p_session: h.session!.id, p_kind: t.kind, p_count: count, p_section: section ? Number(section) : null, p_time: time, p_source: t.source });
+          sb.rpc('cfps_live_add_rounds', { p_session: h.session!.id, p_kind: t.kind, p_count: count, p_section: section ? Number(section) : null, p_time: time, p_source: t.source })
+            .then(({ data, error }) => {
+              if (error) return setErr(error.message);
+              setErr(data === 0
+                ? (t.kind === 'index'
+                    ? 'No approved index sets left for this selection. Approve more in cfps_index_items, or pick another section.'
+                    : 'No new questions left for this selection.')
+                : '');
+              load();
+            });
         }}>Add {count} question{count > 1 ? 's' : ''}</button>
-        <p className="sub" style={{ fontSize: 12, marginTop: 8 }}>Questions are not repeated within a session. Tip: after teaching a section, add 3–5 questions from that section.</p>
+        <p className="sub" style={{ fontSize: 12, marginTop: 8 }}>
+          {type === 'index'
+            ? 'Each index hunt adds 2 rounds: pick the keyword (this time), then solve the question with the book (at least 90 s). Only approved keyword sets are used.'
+            : 'Questions are not repeated within a session. Tip: after teaching a section, add 3–5 questions from that section.'}
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: 14, padding: 0 }}>

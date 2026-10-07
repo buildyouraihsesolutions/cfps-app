@@ -4,11 +4,14 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import { LETTERS, type Options } from '@/lib/types';
 
 type Round = {
-  id: number; seq: number; kind: 'mcq' | 'locate'; source: 'bank' | 'toc'; prompt: string; options: Options | null;
+  id: number; seq: number; kind: 'mcq' | 'locate' | 'index'; source: 'bank' | 'toc'; prompt: string; options: Options | null;
   asks_page: boolean; status: 'pending' | 'open' | 'closed' | 'revealed'; time_limit: number; time_left: number | null;
   my_answer: Record<string, string | number> | null;
-  result: null | { answer: { letter?: string; section?: number; chapter?: number; page?: number | null }; correct: boolean; points: number; explanation: string | null; fph_page: string | null };
+  result: null | { answer: { letter?: string; section?: number; chapter?: number; page?: number | null; term?: string; pages?: string | null }; correct: boolean; points: number; explanation: string | null; fph_page: string | null };
 };
+const IDX = ['A', 'B', 'C'] as const;
+const kindLabel = (r: Round) =>
+  r.kind === 'index' ? 'Index hunt' : r.kind === 'mcq' ? 'Quick quiz' : r.source === 'toc' ? 'Find the chapter' : 'Find it in the FPH';
 type State = { session: { id: number; title: string } | null; me?: { points: number; rank: number | null; players: number; correct: number }; round?: Round | null };
 
 export default function LivePlayer() {
@@ -79,7 +82,7 @@ export default function LivePlayer() {
       {r && (
         <div className="card">
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
-            <span className="pill">{r.kind === 'mcq' ? 'Quick quiz' : r.source === 'toc' ? 'Find the chapter' : 'Find it in the FPH'} · Q{r.seq}</span>
+            <span className="pill">{kindLabel(r)} · Q{r.seq}</span>
             {r.status === 'open' && left != null && <span className={`timer ${left <= 10 ? 'low' : ''}`}>{left}s</span>}
           </div>
 
@@ -88,11 +91,22 @@ export default function LivePlayer() {
               {r.source === 'toc' ? 'Where is this chapter in the Fire Protection Handbook?' : 'Find the section, chapter and page that answer this question:'}
             </p>
           )}
+          {r.kind === 'index' && (
+            <p className="sub" style={{ marginTop: 0 }}>Which index keyword would lead you to the answer? Don&apos;t answer the question yet — just pick where to look.</p>
+          )}
           <div className="stem live-prompt">{r.prompt}</div>
 
           {/* answering */}
           {r.status === 'open' && !answered && left !== 0 && (
-            r.kind === 'mcq' ? (
+            r.kind === 'index' ? (
+              <div>
+                {IDX.map((L) => (
+                  <button key={L} className={`opt ${letter === L ? 'sel' : ''}`} disabled={busy} onClick={() => { setLetter(L); submit({ letter: L }); }}>
+                    <span className="L">{L}.</span><span>{r.options?.[L as keyof Options]}</span>
+                  </button>
+                ))}
+              </div>
+            ) : r.kind === 'mcq' ? (
               <div>
                 {LETTERS.map((L) => (
                   <button key={L} className={`opt ${letter === L ? 'sel' : ''}`} disabled={busy} onClick={() => { setLetter(L); submit({ letter: L }); }}>
@@ -123,7 +137,12 @@ export default function LivePlayer() {
           {r.status === 'revealed' && r.result && (
             <div className={`live-result ${r.result.correct ? 'good' : r.result.points > 0 ? 'part' : 'bad'}`}>
               <div className="big-line">{r.result.correct ? 'Correct!' : r.result.points > 0 ? 'Partly right' : answered ? 'Not this time' : 'No answer'} · +{r.result.points}</div>
-              {r.kind === 'mcq'
+              {r.kind === 'index' ? (
+                <>
+                  <div>Keyword: <b>{r.result.answer.term}</b></div>
+                  {r.result.answer.pages && <div style={{ marginTop: 4 }}>📖 Index → page <b>{r.result.answer.pages}</b>. Open your book there — the question comes next.</div>}
+                </>
+              ) : r.kind === 'mcq'
                 ? <div>Answer: <b>{r.result.answer.letter}. {r.options?.[r.result.answer.letter as keyof Options]}</b></div>
                 : <div>Answer: <b>Section {r.result.answer.section} · Chapter {r.result.answer.section}.{r.result.answer.chapter}{r.result.answer.page ? ` · page ${r.result.answer.section}-${r.result.answer.page}` : ''}</b></div>}
               {r.result.explanation && <div className="expl">{r.result.explanation}{r.result.fph_page && <div style={{ marginTop: 6 }}><b>FPH:</b> page {r.result.fph_page}</div>}</div>}
