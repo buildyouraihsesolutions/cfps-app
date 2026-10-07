@@ -140,7 +140,7 @@ export default function LivePlayer() {
               {r.kind === 'index' ? (
                 <>
                   <div>Keyword: <b>{r.result.answer.term}</b></div>
-                  {r.result.answer.pages && <div style={{ marginTop: 4 }}>📖 Index → page <b>{r.result.answer.pages}</b>. Open your book there — the question comes next.</div>}
+                  {r.result.answer.pages && <div style={{ marginTop: 4 }}>📖 In the index: <b>{r.result.answer.pages}</b>. Next: find the exact page.</div>}
                 </>
               ) : r.kind === 'mcq'
                 ? <div>Answer: <b>{r.result.answer.letter}. {r.options?.[r.result.answer.letter as keyof Options]}</b></div>

@@ -149,7 +149,7 @@ export default function LiveHost() {
               {r.kind === 'index' ? (
                 <>
                   <div className="big-line">Keyword: {r.answer.term}</div>
-                  {r.answer.pages && <div style={{ marginTop: 4 }}>📖 Index → page <b>{r.answer.pages}</b>. Open the book there — next we solve it together.</div>}
+                  {r.answer.pages && <div style={{ marginTop: 4 }}>📖 In the index: <b>{r.answer.pages}</b>. Next: find the page together.</div>}
                 </>
               ) : r.kind === 'locate'
                 ? <div className="big-line">Section {r.answer.section} · Chapter {r.answer.section}.{r.answer.chapter}{r.answer.page ? ` · page ${r.answer.section}-${r.answer.page}` : ''}{r.chapter_title && r.source !== 'toc' ? ` — ${r.chapter_title}` : ''}</div>
@@ -238,7 +238,7 @@ export default function LiveHost() {
         }}>Add {count} question{count > 1 ? 's' : ''}</button>
         <p className="sub" style={{ fontSize: 12, marginTop: 8 }}>
           {type === 'index'
-            ? 'Each index hunt adds 2 rounds: pick the keyword (this time), then solve the question with the book (at least 90 s). Only approved keyword sets are used.'
+            ? 'Each index hunt adds 2 rounds: pick the right index keyword (this time), then find the section, chapter and page in the FPH (at least 90 s).'
             : 'Questions are not repeated within a session. Tip: after teaching a section, add 3–5 questions from that section.'}
         </p>
       </div>
