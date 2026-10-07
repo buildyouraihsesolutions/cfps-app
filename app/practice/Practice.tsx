@@ -5,6 +5,7 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import type { Domain, PlanRow, PoolRow } from '@/lib/types';
 
 type Mode = 'exam' | 'domain' | 'chapter';
+type Source = 'all' | 'unmastered';
 const fmt = (n: number) => { const m = Math.round(n * 1.8); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}` : `${m} min`; };
 
 export default function Practice({ domains, plan, pool, chapterNames, initSection, initChapter }: {
@@ -19,6 +20,7 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
   const [chapterKey, setChapterKey] = useState(initSection ? `${initSection}-${initChapter ?? 'all'}` : '');
   const [dCount, setDCount] = useState<number | null>(10);
   const [timed, setTimed] = useState(false);
+  const [source, setSource] = useState<Source>('all');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -52,14 +54,20 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
     setBusy(true); setErr('');
     let args: Record<string, unknown>;
     if (mode === 'exam') args = { p_mode: 'exam', p_count: size, p_timed: true };
-    else if (mode === 'domain') args = { p_mode: 'domain', p_count: dCount, p_domain: domain, p_timed: timed };
+    else if (mode === 'domain') args = { p_mode: 'domain', p_count: dCount, p_domain: domain, p_timed: timed, p_source: source };
     else {
       if (!chapterKey) { setBusy(false); return setErr('Choose a section or chapter.'); }
       const [s, c] = chapterKey.split('-');
-      args = { p_mode: 'chapter', p_count: dCount, p_section: Number(s), p_chapter: c === 'all' ? null : Number(c), p_timed: timed };
+      args = { p_mode: 'chapter', p_count: dCount, p_section: Number(s), p_chapter: c === 'all' ? null : Number(c), p_timed: timed, p_source: source };
     }
     const { data, error } = await supabaseBrowser().rpc('cfps_start_attempt', args);
-    if (error || !data) { setBusy(false); return setErr(error?.message ?? 'Could not start.'); }
+    if (error || !data) {
+      setBusy(false);
+      if (error?.message?.includes('NO_QUESTIONS_LEFT')) {
+        return setErr('You have answered every question here correctly. Switch to "All questions" to practise them again.');
+      }
+      return setErr(error?.message ?? 'Could not start.');
+    }
     router.push(`/attempt/${data}`);
   }
 
@@ -117,6 +125,17 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
 
       {mode !== 'exam' && (
         <>
+          <label>Question source</label>
+          <div className="seg">
+            <button className={source === 'all' ? 'on' : ''} onClick={() => setSource('all')}>All questions (random)</button>
+            <button className={source === 'unmastered' ? 'on' : ''} onClick={() => setSource('unmastered')}>Not yet answered correctly</button>
+          </div>
+          {source === 'unmastered' && (
+            <p className="sub" style={{ marginTop: 6 }}>
+              Only questions you have never answered correctly: new ones, ones you got wrong, and ones you skipped.
+            </p>
+          )}
+
           <label>Questions</label>
           <div className="seg">
             {[10, 20, null].map((n) => (
