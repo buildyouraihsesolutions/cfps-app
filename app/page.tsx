@@ -36,18 +36,22 @@ export default async function Home() {
         <p>Follow the study plan, keep the handout next to your FPH, and practise under real exam timing: 100 questions in 3 hours.</p>
       </div>
       <div className="grid">
-        <div className="card" style={{ gridColumn: "1 / -1" }}>
-          <h3 style={{ marginTop: 0 }}>🎬 How to apply for the CFPS exam</h3>
-          <p className="sub" style={{ marginTop: 0 }}>Step-by-step walkthrough of the NFPA CFPS application.</p>
-          <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 8, overflow: "hidden" }}>
-            <iframe
-              src="https://www.youtube-nocookie.com/embed/ppihVHPm18U"
-              title="How to apply for the CFPS exam"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
-              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-            />
+        <div className="card" style={{ gridColumn: "1 / -1", order: 99, display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: "0 0 auto", width: "min(100%, 360px)" }}>
+            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 8, overflow: "hidden" }}>
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/ppihVHPm18U"
+                title="How to apply for the CFPS exam"
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }}
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+          <div style={{ flex: "1 1 220px" }}>
+            <h3 style={{ marginTop: 0 }}>🎬 How to apply for the CFPS exam</h3>
+            <p className="sub" style={{ margin: 0 }}>Step-by-step walkthrough of the NFPA CFPS application, and the one mistake to avoid.</p>
           </div>
         </div>
         <Link className="card tile" href="/study-plan"><div className="ico">🗺️</div><h3>Study plan</h3><p className="sub">Blueprint domains, chapters and priorities. Tick off chapters as you finish them.</p></Link>
