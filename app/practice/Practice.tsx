@@ -50,6 +50,17 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
     }));
   }, [pool, plan, chapterNames]);
 
+  const total = useMemo(() => pool.reduce((t, r) => t + Number(r.n), 0), [pool]);
+  const selected = useMemo(() => {
+    if (mode === 'exam') return null;
+    if (mode === 'domain') return domainPool[domain] ?? 0;
+    if (!chapterKey) return null;
+    const [s, c] = chapterKey.split('-');
+    const sec = chapters.find((x) => x.section === Number(s));
+    if (!sec) return 0;
+    return c === 'all' ? sec.total : sec.items.find((i) => i.key === chapterKey)?.n ?? 0;
+  }, [mode, domain, chapterKey, domainPool, chapters]);
+
   async function start() {
     setBusy(true); setErr('');
     let args: Record<string, unknown>;
@@ -73,6 +84,12 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
 
   return (
     <div className="card" style={{ maxWidth: 720 }}>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+        <span className="pill">📚 <b>{total.toLocaleString()}</b> questions in the bank</span>
+        {selected !== null && (
+          <span className="pill">🎯 <b>{selected.toLocaleString()}</b> in this {mode === 'domain' ? 'domain' : 'selection'}</span>
+        )}
+      </div>
       <div className="seg" style={{ marginBottom: 14 }}>
         <button className={mode === 'exam' ? 'on' : ''} onClick={() => setMode('exam')}>Exam simulation</button>
         <button className={mode === 'domain' ? 'on' : ''} onClick={() => setMode('domain')}>By domain</button>
