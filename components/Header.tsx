@@ -14,7 +14,6 @@ export default function Header({ email, isStudent, isAdmin }: { email?: string; 
         {email && (isStudent || isAdmin) && (
           <nav className="nav">
             <Link href="/study-plan">Study plan</Link>
-            <Link href="/handout">Handout</Link>
             <Link href="/practice">Practice</Link>
             <Link href="/study">Study</Link>
             <Link href="/history">My results</Link>

@@ -33,7 +33,7 @@ export default async function Home() {
     <>
       <div className="hero">
         <h1>Welcome{me?.full_name ? `, ${me.full_name.split(' ')[0]}` : ''}</h1>
-        <p>Follow the study plan, keep the handout next to your FPH, and practise under real exam timing: 100 questions in 3 hours.</p>
+        <p>Follow the study plan, keep your FPH at hand, and practise under real exam timing: 100 questions in 3 hours.</p>
       </div>
       <div className="grid">
         <div className="card" style={{ gridColumn: "1 / -1", order: 99, display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
@@ -55,7 +55,6 @@ export default async function Home() {
           </div>
         </div>
         <Link className="card tile" href="/study-plan"><div className="ico">🗺️</div><h3>Study plan</h3><p className="sub">Blueprint domains, chapters and priorities. Tick off chapters as you finish them.</p></Link>
-        <Link className="card tile" href="/handout"><div className="ico">📘</div><h3>Course handout</h3><p className="sub">Download your personal copy of the handout.</p></Link>
         <Link className="card tile" href="/practice"><div className="ico">📝</div><h3>Practice</h3><p className="sub">Exam simulation (30–100 Qs), by domain, or by chapter.</p></Link>
         <Link className="card tile" href="/study"><div className="ico">📖</div><h3>Study questions</h3><p className="sub">Browse questions with model answers and explanations.</p></Link>
         <Link className="card tile" href="/live"><div className="ico">🎯</div><h3>Live class</h3><p className="sub">Join the in-class challenge: find it in the FPH and quick quizzes.</p></Link>

@@ -147,7 +147,7 @@ export default function Study({ domains, plan, pool, chapterNames, email, initSe
 
   return (
     <div className="card" style={{ maxWidth: 820, position: 'relative', overflow: 'hidden', userSelect: 'none' }}>
-      {/* light watermark, same idea as the stamped handouts */}
+      {/* light watermark */}
       {email && (
         <div aria-hidden style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.06, fontSize: 14,
