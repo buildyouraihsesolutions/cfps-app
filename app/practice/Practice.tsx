@@ -1,11 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { Domain, PlanRow, PoolRow } from '@/lib/types';
 
 type Mode = 'exam' | 'domain' | 'chapter';
 type Source = 'all' | 'unmastered';
+const linkBtn: React.CSSProperties = { background: 'none', border: 0, padding: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' };
 const fmt = (n: number) => { const m = Math.round(n * 1.8); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}` : `${m} min`; };
 
 export default function Practice({ domains, plan, pool, chapterNames, initSection, initChapter }: {
@@ -16,7 +17,7 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initSection ? 'chapter' : 'exam');
   const [size, setSize] = useState(30);
-  const [domain, setDomain] = useState(domains[0]?.code ?? 'I');
+  const [picked, setPicked] = useState<string[]>(domains[0] ? [domains[0].code] : ['I']);
   const [chapterKey, setChapterKey] = useState(initSection ? `${initSection}-${initChapter ?? 'all'}` : '');
   const [dCount, setDCount] = useState<number | null>(10);
   const [timed, setTimed] = useState(false);
@@ -29,6 +30,10 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
     pool.forEach((r) => { if (r.domain) m[r.domain] = (m[r.domain] ?? 0) + Number(r.n); });
     return m;
   }, [pool]);
+
+  const toggleDomain = (code: string) =>
+    setPicked((cur) => cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]);
+  const pickedTotal = picked.reduce((t, c) => t + (domainPool[c] ?? 0), 0);
 
   const chapters = useMemo(() => {
     const title = (s: number, c: number) =>
@@ -50,22 +55,16 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
     }));
   }, [pool, plan, chapterNames]);
 
-  const total = useMemo(() => pool.reduce((t, r) => t + Number(r.n), 0), [pool]);
-  const selected = useMemo(() => {
-    if (mode === 'exam') return null;
-    if (mode === 'domain') return domainPool[domain] ?? 0;
-    if (!chapterKey) return null;
-    const [s, c] = chapterKey.split('-');
-    const sec = chapters.find((x) => x.section === Number(s));
-    if (!sec) return 0;
-    return c === 'all' ? sec.total : sec.items.find((i) => i.key === chapterKey)?.n ?? 0;
-  }, [mode, domain, chapterKey, domainPool, chapters]);
-
   async function start() {
     setBusy(true); setErr('');
     let args: Record<string, unknown>;
     if (mode === 'exam') args = { p_mode: 'exam', p_count: size, p_timed: true };
-    else if (mode === 'domain') args = { p_mode: 'domain', p_count: dCount, p_domain: domain, p_timed: timed, p_source: source };
+    else if (mode === 'domain') {
+      if (!picked.length) { setBusy(false); return setErr('Choose at least one domain.'); }
+      // keep the blueprint order (I, II, III …) whatever order they were ticked in
+      const codes = domains.map((d) => d.code).filter((c) => picked.includes(c));
+      args = { p_mode: 'domain', p_count: dCount, p_domain: codes.join(','), p_timed: timed, p_source: source };
+    }
     else {
       if (!chapterKey) { setBusy(false); return setErr('Choose a section or chapter.'); }
       const [s, c] = chapterKey.split('-');
@@ -84,12 +83,6 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
 
   return (
     <div className="card" style={{ maxWidth: 720 }}>
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <span className="pill">📚 <b>{total.toLocaleString()}</b> questions in the bank</span>
-        {selected !== null && (
-          <span className="pill">🎯 <b>{selected.toLocaleString()}</b> in this {mode === 'domain' ? 'domain' : 'selection'}</span>
-        )}
-      </div>
       <div className="seg" style={{ marginBottom: 14 }}>
         <button className={mode === 'exam' ? 'on' : ''} onClick={() => setMode('exam')}>Exam simulation</button>
         <button className={mode === 'domain' ? 'on' : ''} onClick={() => setMode('domain')}>By domain</button>
@@ -118,10 +111,25 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
 
       {mode === 'domain' && (
         <>
-          <label htmlFor="dom">Domain</label>
-          <select id="dom" value={domain} onChange={(e) => setDomain(e.target.value)}>
-            {domains.map((d) => <option key={d.code} value={d.code}>{d.code}. {d.name} ({domainPool[d.code] ?? 0} questions)</option>)}
-          </select>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <label style={{ marginBottom: 0 }}>Domains <span className="sub">(choose one or more)</span></label>
+            <span className="sub">
+              <button type="button" style={linkBtn} onClick={() => setPicked(domains.map((d) => d.code))}>Select all</button>
+              {' · '}
+              <button type="button" style={linkBtn} onClick={() => setPicked([])}>Clear</button>
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+            {domains.map((d) => (
+              <label key={d.code} style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 'normal', margin: 0, cursor: 'pointer' }}>
+                <input type="checkbox" checked={picked.includes(d.code)} onChange={() => toggleDomain(d.code)} />
+                <span>{d.code}. {d.name} <span className="sub">({domainPool[d.code] ?? 0} questions)</span></span>
+              </label>
+            ))}
+          </div>
+          <p className="sub" style={{ marginTop: 6 }}>
+            {picked.length ? `${picked.length} domain${picked.length > 1 ? 's' : ''} selected · ${pickedTotal} questions in the pool. Questions are mixed at random.` : 'No domain selected.'}
+          </p>
         </>
       )}
 
@@ -166,7 +174,7 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
       )}
 
       <div style={{ marginTop: 18 }}>
-        <button className="btn" onClick={start} disabled={busy}>{busy ? 'Preparing…' : 'Start'}</button>
+        <button className="btn" onClick={start} disabled={busy || (mode === 'domain' && !picked.length)}>{busy ? 'Preparing…' : 'Start'}</button>
       </div>
       {err && <div className="err">{err}</div>}
     </div>
