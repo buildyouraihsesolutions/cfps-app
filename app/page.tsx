@@ -54,6 +54,10 @@ export default async function Home() {
             <p className="sub" style={{ margin: 0 }}>Step-by-step walkthrough of the NFPA CFPS application, and the one mistake to avoid.</p>
           </div>
         </div>
+        <Link className="card tile" href="/mock" style={{ gridColumn: '1 / -1', borderLeft: '4px solid #F8984D' }}>
+          <div className="ico">🏁</div><h3>Readiness mock exam</h3>
+          <p className="sub">100 questions · 3 hours · one attempt. Opens on 15 December 2026. Read the instructions before the day.</p>
+        </Link>
         <Link className="card tile" href="/study-plan"><div className="ico">🗺️</div><h3>Study plan</h3><p className="sub">Blueprint domains, chapters and priorities. Tick off chapters as you finish them.</p></Link>
         <Link className="card tile" href="/practice"><div className="ico">📝</div><h3>Practice</h3><p className="sub">Exam simulation (30–100 Qs), by domain, or by chapter.</p></Link>
         <Link className="card tile" href="/study"><div className="ico">📖</div><h3>Study questions</h3><p className="sub">Browse questions with model answers and explanations.</p></Link>
