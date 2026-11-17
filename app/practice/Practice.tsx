@@ -1,10 +1,10 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { Domain, PlanRow, PoolRow } from '@/lib/types';
 
-type Mode = 'exam' | 'domain' | 'chapter';
+type Mode = 'exam' | 'domain' | 'chapter' | 'tables';
 type Source = 'all' | 'unmastered';
 const linkBtn: React.CSSProperties = { background: 'none', border: 0, padding: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' };
 const fmt = (n: number) => { const m = Math.round(n * 1.8); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}` : `${m} min`; };
@@ -22,6 +22,8 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
   const [dCount, setDCount] = useState<number | null>(10);
   const [timed, setTimed] = useState(false);
   const [source, setSource] = useState<Source>('all');
+  const [tPicked, setTPicked] = useState<string[]>(domains.map((d) => d.code));
+  const [tPool, setTPool] = useState<Record<string, number> | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -30,6 +32,19 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
     pool.forEach((r) => { if (r.domain) m[r.domain] = (m[r.domain] ?? 0) + Number(r.n); });
     return m;
   }, [pool]);
+
+  // the FPH-tables bank is separate from the main bank; load its counts once
+  useEffect(() => {
+    supabaseBrowser().rpc('cfps_table_pool_counts').then(({ data }: { data: { domain: string; n: number }[] | null }) => {
+      const m: Record<string, number> = {};
+      (data ?? []).forEach((r) => { if (r.domain) m[r.domain] = Number(r.n); });
+      setTPool(m);
+    });
+  }, []);
+  const toggleT = (code: string) =>
+    setTPicked((cur) => cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]);
+  const tTotal = tPicked.reduce((t, c) => t + (tPool?.[c] ?? 0), 0);
+  const tAll = Object.values(tPool ?? {}).reduce((a, b) => a + b, 0);
 
   const toggleDomain = (code: string) =>
     setPicked((cur) => cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code]);
@@ -65,6 +80,11 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
       const codes = domains.map((d) => d.code).filter((c) => picked.includes(c));
       args = { p_mode: 'domain', p_count: dCount, p_domain: codes.join(','), p_timed: timed, p_source: source };
     }
+    else if (mode === 'tables') {
+      if (!tPicked.length) { setBusy(false); return setErr('Choose at least one domain.'); }
+      const codes = domains.map((d) => d.code).filter((c) => tPicked.includes(c));
+      args = { p_mode: 'tables', p_count: dCount, p_domain: codes.length === domains.length ? null : codes.join(','), p_timed: timed, p_source: source };
+    }
     else {
       if (!chapterKey) { setBusy(false); return setErr('Choose a section or chapter.'); }
       const [s, c] = chapterKey.split('-');
@@ -87,6 +107,7 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
         <button className={mode === 'exam' ? 'on' : ''} onClick={() => setMode('exam')}>Exam simulation</button>
         <button className={mode === 'domain' ? 'on' : ''} onClick={() => setMode('domain')}>By domain</button>
         <button className={mode === 'chapter' ? 'on' : ''} onClick={() => setMode('chapter')}>By chapter</button>
+        <button className={mode === 'tables' ? 'on' : ''} onClick={() => setMode('tables')}>FPH tables</button>
       </div>
 
       {mode === 'exam' && (
@@ -133,6 +154,34 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
         </>
       )}
 
+      {mode === 'tables' && (
+        <>
+          <p className="sub">
+            A separate bank of {tAll || ''} questions that can only be answered by finding the right table in the FPH.
+            Keep your FPH open and practise locating tables quickly. An estimated 10–20% of real exam questions need a table.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+            <label style={{ marginBottom: 0 }}>Domains <span className="sub">(choose one or more)</span></label>
+            <span className="sub">
+              <button type="button" style={linkBtn} onClick={() => setTPicked(domains.map((d) => d.code))}>Select all</button>
+              {' · '}
+              <button type="button" style={linkBtn} onClick={() => setTPicked([])}>Clear</button>
+            </span>
+          </div>
+          <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+            {domains.map((d) => (
+              <label key={d.code} style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 'normal', margin: 0, cursor: 'pointer' }}>
+                <input type="checkbox" checked={tPicked.includes(d.code)} onChange={() => toggleT(d.code)} />
+                <span>{d.code}. {d.name} <span className="sub">({tPool ? (tPool[d.code] ?? 0) : '…'} table questions)</span></span>
+              </label>
+            ))}
+          </div>
+          <p className="sub" style={{ marginTop: 6 }}>
+            {tPicked.length ? `${tPicked.length} domain${tPicked.length > 1 ? 's' : ''} selected · ${tTotal} table questions in the pool.` : 'No domain selected.'}
+          </p>
+        </>
+      )}
+
       {mode === 'chapter' && (
         <>
           <label htmlFor="ch">Section or chapter</label>
@@ -174,7 +223,7 @@ export default function Practice({ domains, plan, pool, chapterNames, initSectio
       )}
 
       <div style={{ marginTop: 18 }}>
-        <button className="btn" onClick={start} disabled={busy || (mode === 'domain' && !picked.length)}>{busy ? 'Preparing…' : 'Start'}</button>
+        <button className="btn" onClick={start} disabled={busy || (mode === 'domain' && !picked.length) || (mode === 'tables' && !tPicked.length)}>{busy ? 'Preparing…' : 'Start'}</button>
       </div>
       {err && <div className="err">{err}</div>}
     </div>
